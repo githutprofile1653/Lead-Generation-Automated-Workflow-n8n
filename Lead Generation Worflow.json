@@ -1,0 +1,1967 @@
+{
+  "name": "Lead Generation Worflow",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Lead Generation Form",
+        "formDescription": "This form captures information needed to generate leads",
+        "formFields": {
+          "values": [
+            {
+              "fieldName": "Industry",
+              "fieldLabel": "Industry"
+            },
+            {
+              "fieldName": "Location",
+              "fieldLabel": "Location"
+            },
+            {
+              "fieldName": "Number of rows",
+              "fieldLabel": "Number of rows"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.4,
+      "position": [
+        -720,
+        -128
+      ],
+      "id": "71686823-a7d7-4146-9e30-180317d907e0",
+      "name": "On form submission",
+      "webhookId": "1cdfd1a7-cb5a-4347-b1c9-ce20275cb0fb"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorSource": "store",
+        "actorId": {
+          "__rl": true,
+          "value": "=nwua9Gu5YrADL7ZDj",
+          "mode": "id"
+        },
+        "customBody": "={\n    \"includeWebResults\": false,\n    \"language\": \"en\",\n    \"locationQuery\": \"{{ $json.Location }}\",\n    \"maxCrawledPlacesPerSearch\": {{ $json['Number of rows'] }},\n    \"maxImages\": 0,\n    \"maximumLeadsEnrichmentRecords\": 0,\n    \"scrapeContacts\": false,\n    \"scrapeDirectories\": false,\n    \"scrapeImageAuthors\": false,\n    \"scrapePlaceDetailPage\": false,\n    \"scrapeReviewsPersonalData\": true,\n    \"scrapeSocialMediaProfiles\": {\n        \"facebooks\": false,\n        \"instagrams\": false,\n        \"tiktoks\": false,\n        \"twitters\": false,\n        \"youtubes\": false\n    },\n    \"scrapeTableReservationProvider\": false,\n    \"searchStringsArray\": [\n        \"{{ $json.Industry }}\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+        "timeout": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        -128
+      ],
+      "id": "9cb3f276-534a-43a5-be33-cdc4f92f854a",
+      "name": "Run an Actor and get dataset",
+      "credentials": {
+        "apifyApi": {
+          "id": "5MypDywnsSBNZi04",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "website, title, phoneUnformatted, state",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -128
+      ],
+      "id": "67c1af10-7f46-491f-96a7-36e3106bb7de",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.website }}",
+                    "rightValue": "undefined",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "c934a0b0-d76d-4311-96e0-9e6e2a69daea"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "541d1cb9-d737-4301-aebc-e1d6a849e0fa",
+                    "leftValue": "={{ $json.website }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        -128
+      ],
+      "id": "350a39c7-283c-432a-abb9-182307edbf6e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "query": "=site: {{ $json.title }} contact email",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        304,
+        -16
+      ],
+      "id": "bb6d01f4-c2d5-4596-911a-b56cc9b59448",
+      "name": "Search",
+      "credentials": {
+        "tavilyApi": {
+          "id": "zJaiRRlL5nej8sRb",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize array to store extracted info\nconst extractedData = [];\n\n// Loop through all items (multiple search outputs)\nitems.forEach(searchOutput => {\n  const results = searchOutput.json.results || [];\n  \n  // Skip if results array is empty\n  if (results.length === 0) return;\n  \n  // Loop through each result\n  results.forEach(result => {\n    const content = result.content || '';\n    \n    // Extract all emails using regex\n    const emails = content.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g) || [];\n    \n    // Extract phone numbers (simple pattern, adjust if needed)\n    const phones = content.match(/(\\+?\\d{1,4}[-.\\s]?)?(\\(?\\d{2,4}\\)?[-.\\s]?)?\\d{3,4}[-.\\s]?\\d{3,4}/g) || [];\n    \n    // Get website URL from result (if available)\n    const url = result.url || '';\n    \n    // Get business title from result (if available)\n    const title = result.title || '';\n    \n    // Push a record for each email found\n    emails.forEach(email => {\n      extractedData.push({\n        url: url,\n        title: title,\n        phone: phones[0] || '', // take first phone if multiple found\n        email: email,\n        score: result.score // optional, for relevance\n      });\n    });\n    \n    // If no email but we still want to capture title, phone, url\n    if (emails.length === 0) {\n      extractedData.push({\n        url: url,\n        title: title,\n        phone: phones[0] || '',\n        email: '',\n        score: result.score\n      });\n    }\n  });\n});\n\n// Deduplicate based on URL + email\nconst uniqueData = [];\nconst seen = new Set();\n\nextractedData.forEach(item => {\n  const key = `${item.url}|${item.email}`;\n  if (!seen.has(key)) {\n    seen.add(key);\n    uniqueData.push(item);\n  }\n});\n\n// Return final list\nreturn uniqueData;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -16
+      ],
+      "id": "443c2ca0-4ece-46b8-b02e-9911c91774df",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize a map to store emails and their best item\nconst emailMap = new Map();\n\n// Loop through all items\nitems.forEach(item => {\n  const { email = '', url = '', title = '', phone = '', score = 0 } = item.json;\n\n  if (!email) return; // skip if no email\n\n  // If email not seen before, add it\n  if (!emailMap.has(email)) {\n    emailMap.set(email, { email, url, title, phone, score });\n  } else {\n    // If email exists, keep the one with higher score\n    const existing = emailMap.get(email);\n    if (score > existing.score) {\n      emailMap.set(email, { email, url, title, phone, score });\n    }\n  }\n});\n\n// Convert map values to array\nconst uniqueData = Array.from(emailMap.values());\n\n// Return the final deduplicated list\nreturn uniqueData;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -16
+      ],
+      "id": "b4f56502-2abb-4a10-9cf2-aa61478ecbc0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "title, phoneUnformatted, state, website",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -224
+      ],
+      "id": "1e33252f-8aae-469a-b074-d514bc974a38",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1mlth7qgIKZAbfZouAciQzSqANPIIHV0HcmbLz2GjOpA",
+          "mode": "list",
+          "cachedResultName": "leads-no-email",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mlth7qgIKZAbfZouAciQzSqANPIIHV0HcmbLz2GjOpA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kXAgKQveP7lNxvzkgUcXr-9YfpRmTQL9C6h6v27iQUI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Business": "={{ $json.title }}",
+            "Phone Number": "={{ $json.phoneUnformatted }}",
+            "State": "={{ $json.state }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Business",
+              "displayName": "Business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        304,
+        -288
+      ],
+      "id": "e18bf810-810f-4102-9841-a98710c57efd",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XreNIHTR0SRSBsSH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "website, title, phoneUnformatted, state",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -32
+      ],
+      "id": "782351bb-8708-4d6d-abd8-9caf34ea88ad",
+      "name": "Split Out2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kXAgKQveP7lNxvzkgUcXr-9YfpRmTQL9C6h6v27iQUI",
+          "mode": "list",
+          "cachedResultName": "leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kXAgKQveP7lNxvzkgUcXr-9YfpRmTQL9C6h6v27iQUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kXAgKQveP7lNxvzkgUcXr-9YfpRmTQL9C6h6v27iQUI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Business": "={{ $json.title }}",
+            "Phone": "={{ $json.phone }}",
+            "email": "={{ $json.email }}"
+          },
+          "matchingColumns": [
+            "Business"
+          ],
+          "schema": [
+            {
+              "id": "Business",
+              "displayName": "Business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        -16
+      ],
+      "id": "d4fe0732-518b-45a7-a476-1466c579b75a",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XreNIHTR0SRSBsSH",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "On form submission": [
+      {
+        "json": {
+          "Industry": "restuarant",
+          "Location": "Abuja",
+          "Number of rows": "5",
+          "submittedAt": "2026-01-11T17:14:38.853+01:00",
+          "formMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Run an Actor and get dataset": [
+      {
+        "json": {
+          "title": "The Council Restaurant",
+          "price": null,
+          "categoryName": "Restaurant",
+          "address": "35 Ibrahim Babangida Wy, Wuse, Abuja 904101, Federal Capital Territory, Nigeria",
+          "neighborhood": "Wuse",
+          "street": "35 Ibrahim Babangida Wy",
+          "city": "Abuja",
+          "postalCode": null,
+          "state": "Federal Capital Territory",
+          "countryCode": "NG",
+          "phone": "+234 805 555 3268",
+          "phoneUnformatted": "+2348055553268",
+          "claimThisBusiness": false,
+          "location": {
+            "lat": 9.0839791,
+            "lng": 7.4904637
+          },
+          "totalScore": 4.4,
+          "permanentlyClosed": false,
+          "temporarilyClosed": false,
+          "placeId": "ChIJ2w-w4ukLThARkUAtlZM0_WU",
+          "categories": [
+            "Restaurant"
+          ],
+          "fid": "0x104e0be9e2b00fdb:0x65fd3493952d4091",
+          "cid": "7349087975406125201",
+          "reviewsCount": 300,
+          "imagesCount": 340,
+          "imageCategories": [],
+          "scrapedAt": "2026-01-11T21:39:34.105Z",
+          "googleFoodUrl": null,
+          "hotelAds": [],
+          "openingHours": [
+            {
+              "day": "Monday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Tuesday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Wednesday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Thursday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Friday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Saturday",
+              "hours": "10 AM to 11:30 PM"
+            },
+            {
+              "day": "Sunday",
+              "hours": "10 AM to 11:30 PM"
+            }
+          ],
+          "peopleAlsoSearch": [],
+          "placesTags": [],
+          "reviewsTags": [],
+          "additionalInfo": {
+            "Service options": [
+              {
+                "Delivery": true
+              },
+              {
+                "Takeout": true
+              },
+              {
+                "Dine-in": true
+              }
+            ],
+            "Highlights": [
+              {
+                "Great beer selection": true
+              },
+              {
+                "Great cocktails": true
+              },
+              {
+                "Great coffee": true
+              },
+              {
+                "Great dessert": true
+              },
+              {
+                "Great tea selection": true
+              },
+              {
+                "Great wine list": true
+              }
+            ],
+            "Popular for": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Solo dining": true
+              }
+            ],
+            "Accessibility": [
+              {
+                "Wheelchair accessible restroom": true
+              }
+            ],
+            "Offerings": [
+              {
+                "Alcohol": true
+              },
+              {
+                "All you can eat": true
+              },
+              {
+                "Beer": true
+              },
+              {
+                "Cocktails": true
+              },
+              {
+                "Coffee": true
+              },
+              {
+                "Hard liquor": true
+              },
+              {
+                "Late-night food": true
+              },
+              {
+                "Quick bite": true
+              },
+              {
+                "Small plates": true
+              },
+              {
+                "Wine": true
+              }
+            ],
+            "Dining options": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Brunch": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Catering": true
+              },
+              {
+                "Dessert": true
+              },
+              {
+                "Seating": true
+              },
+              {
+                "Table service": true
+              }
+            ],
+            "Amenities": [
+              {
+                "Bar onsite": true
+              },
+              {
+                "Restroom": true
+              }
+            ],
+            "Atmosphere": [
+              {
+                "Casual": true
+              },
+              {
+                "Cozy": true
+              },
+              {
+                "Trendy": true
+              }
+            ],
+            "Crowd": [
+              {
+                "Groups": true
+              }
+            ],
+            "Planning": [
+              {
+                "Accepts reservations": true
+              }
+            ],
+            "Payments": [
+              {
+                "Credit cards": true
+              },
+              {
+                "Debit cards": true
+              },
+              {
+                "NFC mobile payments": true
+              }
+            ],
+            "Children": [
+              {
+                "High chairs": true
+              }
+            ],
+            "Parking": [
+              {
+                "Free parking lot": true
+              },
+              {
+                "Free street parking": true
+              }
+            ]
+          },
+          "gasPrices": [],
+          "url": "https://www.google.com/maps/search/?api=1&query=The%20Council%20Restaurant&query_place_id=ChIJ2w-w4ukLThARkUAtlZM0_WU",
+          "searchPageUrl": "https://www.google.com/maps/search/restuarant/@9.089783407088888,7.497887920620985,16z?hl=en",
+          "searchString": "restuarant",
+          "language": "en",
+          "rank": 1,
+          "isAdvertisement": false,
+          "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwCPIeMqbosSf85wVDOC24ApgInmF0LX0tQJMDXTw9w30hEps_4l7h5kgeMA130quzH67s6U3ZHS3482vfCOXFlaR3ThRZM_uDKBB4TlfT3Z62kfNLk966elqLSdQ-ykjGyJ7Me=w408-h306-k-no",
+          "kgmid": "/g/11hr2rptpt"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "Shogan Restaurant Abuja",
+          "price": "$$",
+          "categoryName": "Asian restaurant",
+          "address": "55 Lake Chad Cres, Maitama, FCT 904101, Federal Capital Territory, Nigeria",
+          "neighborhood": "Maitama",
+          "street": "55 Lake Chad Cres",
+          "city": "FCT",
+          "postalCode": null,
+          "state": "Federal Capital Territory",
+          "countryCode": "NG",
+          "phone": "+234 807 988 8886",
+          "phoneUnformatted": "+2348079888886",
+          "claimThisBusiness": false,
+          "location": {
+            "lat": 9.0891222,
+            "lng": 7.5015187
+          },
+          "totalScore": 4.4,
+          "permanentlyClosed": false,
+          "temporarilyClosed": false,
+          "placeId": "ChIJPyQj4CYLThARIb4DZ-5V9sg",
+          "categories": [
+            "Asian restaurant"
+          ],
+          "fid": "0x104e0b26e023243f:0xc8f655ee6703be21",
+          "cid": "14480856134275284513",
+          "reviewsCount": 243,
+          "imagesCount": 313,
+          "imageCategories": [],
+          "scrapedAt": "2026-01-11T21:39:34.106Z",
+          "googleFoodUrl": null,
+          "hotelAds": [],
+          "openingHours": [
+            {
+              "day": "Monday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Tuesday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Wednesday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Thursday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Friday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Saturday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Sunday",
+              "hours": "10 AM to 11 PM"
+            }
+          ],
+          "peopleAlsoSearch": [],
+          "placesTags": [],
+          "reviewsTags": [],
+          "additionalInfo": {
+            "Service options": [
+              {
+                "Outdoor seating": true
+              },
+              {
+                "Delivery": true
+              },
+              {
+                "Takeout": true
+              },
+              {
+                "Dine-in": true
+              }
+            ],
+            "Highlights": [
+              {
+                "Great beer selection": true
+              },
+              {
+                "Great cocktails": true
+              },
+              {
+                "Great coffee": true
+              },
+              {
+                "Great dessert": true
+              },
+              {
+                "Great tea selection": true
+              },
+              {
+                "Great wine list": true
+              },
+              {
+                "Live music": true
+              }
+            ],
+            "Popular for": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Solo dining": true
+              }
+            ],
+            "Accessibility": [
+              {
+                "Wheelchair accessible entrance": true
+              },
+              {
+                "Wheelchair accessible parking lot": true
+              },
+              {
+                "Wheelchair accessible restroom": true
+              },
+              {
+                "Wheelchair accessible seating": true
+              }
+            ],
+            "Offerings": [
+              {
+                "Alcohol": true
+              },
+              {
+                "All you can eat": true
+              },
+              {
+                "Beer": true
+              },
+              {
+                "Cocktails": true
+              },
+              {
+                "Coffee": true
+              },
+              {
+                "Happy hour drinks": true
+              },
+              {
+                "Happy hour food": true
+              },
+              {
+                "Hard liquor": true
+              },
+              {
+                "Late-night food": true
+              },
+              {
+                "Quick bite": true
+              },
+              {
+                "Small plates": true
+              },
+              {
+                "Vegan options": true
+              },
+              {
+                "Vegetarian options": true
+              },
+              {
+                "Wine": true
+              }
+            ],
+            "Dining options": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Brunch": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Catering": true
+              },
+              {
+                "Dessert": true
+              },
+              {
+                "Seating": true
+              },
+              {
+                "Table service": true
+              }
+            ],
+            "Amenities": [
+              {
+                "Bar onsite": true
+              },
+              {
+                "Restroom": true
+              }
+            ],
+            "Atmosphere": [
+              {
+                "Casual": true
+              },
+              {
+                "Cozy": true
+              },
+              {
+                "Quiet": true
+              },
+              {
+                "Romantic": true
+              },
+              {
+                "Trendy": true
+              },
+              {
+                "Upscale": true
+              }
+            ],
+            "Crowd": [
+              {
+                "Groups": true
+              },
+              {
+                "Tourists": true
+              }
+            ],
+            "Planning": [
+              {
+                "Brunch reservations recommended": true
+              },
+              {
+                "Lunch reservations recommended": true
+              },
+              {
+                "Dinner reservations recommended": true
+              },
+              {
+                "Accepts reservations": true
+              }
+            ],
+            "Payments": [
+              {
+                "Credit cards": true
+              },
+              {
+                "Debit cards": true
+              },
+              {
+                "NFC mobile payments": true
+              }
+            ],
+            "Children": [
+              {
+                "Good for kids": true
+              },
+              {
+                "High chairs": true
+              }
+            ],
+            "Parking": [
+              {
+                "Free parking lot": true
+              },
+              {
+                "Free street parking": true
+              },
+              {
+                "Usually somewhat difficult to find a space": true
+              }
+            ]
+          },
+          "gasPrices": [],
+          "url": "https://www.google.com/maps/search/?api=1&query=Shogan%20Restaurant%20Abuja&query_place_id=ChIJPyQj4CYLThARIb4DZ-5V9sg",
+          "searchPageUrl": "https://www.google.com/maps/search/restuarant/@9.089783407088888,7.497887920620985,16z?hl=en",
+          "searchString": "restuarant",
+          "language": "en",
+          "rank": 2,
+          "isAdvertisement": false,
+          "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwQF2np7VIjYCWYuXDdvO0uvdmE4JxC6tfLNE-RtJM9sQQDNVv8U7u017KrckrC-ahhpjdyZq3Dobkyi7puwSFAs5BbfTyOJvaZ4iaQt5uTyNxThvkk1iGf2nyoo9fEwrj1Hn0nYQ=w408-h544-k-no",
+          "kgmid": "/g/11tnbxcqcd"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "6ixx restaurant and Grill",
+          "price": null,
+          "categoryName": "Restaurant",
+          "address": "10B Yedseram St, Maitama, Abuja 904101, Federal Capital Territory, Nigeria",
+          "neighborhood": "Maitama",
+          "street": "10B Yedseram St",
+          "city": "Abuja",
+          "postalCode": "904101",
+          "state": "Federal Capital Territory",
+          "countryCode": "NG",
+          "phone": "+234 913 444 4818",
+          "phoneUnformatted": "+2349134444818",
+          "claimThisBusiness": false,
+          "location": {
+            "lat": 9.0930942,
+            "lng": 7.4951386
+          },
+          "totalScore": 4.4,
+          "permanentlyClosed": false,
+          "temporarilyClosed": false,
+          "placeId": "ChIJFRpSTuoLThAR9pXhKt-4UxE",
+          "categories": [
+            "Restaurant"
+          ],
+          "fid": "0x104e0bea4e521a15:0x1153b8df2ae195f6",
+          "cid": "1248544790348404214",
+          "reviewsCount": 153,
+          "imagesCount": 125,
+          "imageCategories": [],
+          "scrapedAt": "2026-01-11T21:39:34.107Z",
+          "googleFoodUrl": null,
+          "hotelAds": [],
+          "openingHours": [
+            {
+              "day": "Monday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Tuesday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Wednesday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Thursday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Friday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Saturday",
+              "hours": "Open 24 hours"
+            },
+            {
+              "day": "Sunday",
+              "hours": "Open 24 hours"
+            }
+          ],
+          "peopleAlsoSearch": [],
+          "placesTags": [],
+          "reviewsTags": [],
+          "additionalInfo": {
+            "Service options": [
+              {
+                "Outdoor seating": true
+              },
+              {
+                "Delivery": true
+              },
+              {
+                "Takeout": true
+              },
+              {
+                "Dine-in": true
+              }
+            ],
+            "Highlights": [
+              {
+                "Great beer selection": true
+              },
+              {
+                "Great cocktails": true
+              },
+              {
+                "Great dessert": true
+              },
+              {
+                "Great tea selection": true
+              },
+              {
+                "Great wine list": true
+              }
+            ],
+            "Popular for": [
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Solo dining": true
+              }
+            ],
+            "Accessibility": [
+              {
+                "Wheelchair accessible restroom": true
+              },
+              {
+                "Wheelchair accessible seating": true
+              }
+            ],
+            "Offerings": [
+              {
+                "Alcohol": true
+              },
+              {
+                "All you can eat": true
+              },
+              {
+                "Beer": true
+              },
+              {
+                "Cocktails": true
+              },
+              {
+                "Coffee": true
+              },
+              {
+                "Halal food": true
+              },
+              {
+                "Happy hour drinks": true
+              },
+              {
+                "Happy hour food": true
+              },
+              {
+                "Hard liquor": true
+              },
+              {
+                "Late-night food": true
+              },
+              {
+                "Quick bite": true
+              },
+              {
+                "Small plates": true
+              },
+              {
+                "Vegan options": true
+              },
+              {
+                "Vegetarian options": true
+              },
+              {
+                "Wine": true
+              }
+            ],
+            "Dining options": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Brunch": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Catering": true
+              },
+              {
+                "Dessert": true
+              },
+              {
+                "Seating": true
+              },
+              {
+                "Table service": true
+              }
+            ],
+            "Amenities": [
+              {
+                "Bar onsite": true
+              },
+              {
+                "Restroom": true
+              }
+            ],
+            "Atmosphere": [
+              {
+                "Casual": true
+              },
+              {
+                "Cozy": true
+              },
+              {
+                "Romantic": true
+              },
+              {
+                "Trendy": true
+              },
+              {
+                "Upscale": true
+              }
+            ],
+            "Crowd": [
+              {
+                "College students": true
+              },
+              {
+                "Groups": true
+              },
+              {
+                "Tourists": true
+              }
+            ],
+            "Planning": [
+              {
+                "Brunch reservations recommended": true
+              },
+              {
+                "Lunch reservations recommended": true
+              },
+              {
+                "Accepts reservations": true
+              }
+            ],
+            "Payments": [
+              {
+                "Credit cards": true
+              },
+              {
+                "Debit cards": true
+              },
+              {
+                "NFC mobile payments": true
+              }
+            ],
+            "Children": [
+              {
+                "Good for kids": true
+              },
+              {
+                "Good for kids birthday": true
+              },
+              {
+                "High chairs": true
+              },
+              {
+                "Kids' menu": true
+              }
+            ],
+            "Parking": [
+              {
+                "Free parking lot": true
+              },
+              {
+                "Free street parking": true
+              }
+            ]
+          },
+          "gasPrices": [],
+          "url": "https://www.google.com/maps/search/?api=1&query=6ixx%20restaurant%20and%20Grill&query_place_id=ChIJFRpSTuoLThAR9pXhKt-4UxE",
+          "searchPageUrl": "https://www.google.com/maps/search/restuarant/@9.089783407088888,7.497887920620985,16z?hl=en",
+          "searchString": "restuarant",
+          "language": "en",
+          "rank": 3,
+          "isAdvertisement": false,
+          "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AG0ilSzHyyp7m2BtcrLfSMpnEIgMqgWe9ZOK_y7Qym2p9xTLhD3qIwYdAlIY_gt6K28hVR1ZTEtOV7xxhja7zuyfuLhHCpd7hVqQ0jHg0_Km8sRLGMIv_KGmXFtzjPD-N7WXuQcsz7hO=w408-h306-k-no",
+          "kgmid": "/g/11mmm1vscl"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "Gardenia by Munchkins",
+          "price": null,
+          "categoryName": "Restaurant",
+          "address": "Amusement Park, IBB Boulevard, Maitama, AMAC 900271, Federal Capital Territory, Nigeria",
+          "neighborhood": "Maitama",
+          "street": "Amusement Park, IBB Boulevard",
+          "city": "AMAC",
+          "postalCode": "900271",
+          "state": "Federal Capital Territory",
+          "countryCode": "NG",
+          "website": "https://gardeniaresto.com/",
+          "phone": "+234 808 844 4444",
+          "phoneUnformatted": "+2348088444444",
+          "claimThisBusiness": false,
+          "location": {
+            "lat": 9.0867748,
+            "lng": 7.4984173
+          },
+          "totalScore": 4.4,
+          "permanentlyClosed": false,
+          "temporarilyClosed": false,
+          "placeId": "ChIJ32AHTsULThARW8E2sJ0FZ20",
+          "categories": [
+            "Restaurant"
+          ],
+          "fid": "0x104e0bc54e0760df:0x6d67059db036c15b",
+          "cid": "7883275847559725403",
+          "reviewsCount": 107,
+          "imagesCount": 170,
+          "imageCategories": [],
+          "scrapedAt": "2026-01-11T21:39:34.107Z",
+          "googleFoodUrl": null,
+          "hotelAds": [],
+          "openingHours": [
+            {
+              "day": "Monday",
+              "hours": "10 to 11 AM"
+            },
+            {
+              "day": "Tuesday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Wednesday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Thursday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Friday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Saturday",
+              "hours": "10 AM to 11 PM"
+            },
+            {
+              "day": "Sunday",
+              "hours": "10 AM to 11 PM"
+            }
+          ],
+          "peopleAlsoSearch": [],
+          "placesTags": [],
+          "reviewsTags": [],
+          "additionalInfo": {
+            "Service options": [
+              {
+                "Outdoor seating": true
+              },
+              {
+                "Delivery": true
+              },
+              {
+                "Takeout": true
+              },
+              {
+                "Dine-in": true
+              }
+            ],
+            "Highlights": [
+              {
+                "Great cocktails": true
+              },
+              {
+                "Great coffee": true
+              },
+              {
+                "Great dessert": true
+              },
+              {
+                "Great tea selection": true
+              },
+              {
+                "Great wine list": true
+              },
+              {
+                "Sports": true
+              }
+            ],
+            "Popular for": [
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Solo dining": true
+              }
+            ],
+            "Accessibility": [
+              {
+                "Wheelchair accessible parking lot": true
+              },
+              {
+                "Wheelchair accessible restroom": true
+              }
+            ],
+            "Offerings": [
+              {
+                "Alcohol": true
+              },
+              {
+                "All you can eat": true
+              },
+              {
+                "Cocktails": true
+              },
+              {
+                "Coffee": true
+              },
+              {
+                "Halal food": true
+              },
+              {
+                "Happy hour drinks": true
+              },
+              {
+                "Happy hour food": true
+              },
+              {
+                "Late-night food": true
+              },
+              {
+                "Organic dishes": true
+              },
+              {
+                "Quick bite": true
+              },
+              {
+                "Small plates": true
+              },
+              {
+                "Vegetarian options": true
+              },
+              {
+                "Wine": true
+              }
+            ],
+            "Dining options": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Brunch": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Catering": true
+              },
+              {
+                "Dessert": true
+              },
+              {
+                "Seating": true
+              },
+              {
+                "Table service": true
+              }
+            ],
+            "Amenities": [
+              {
+                "Bar onsite": true
+              },
+              {
+                "Restroom": true
+              }
+            ],
+            "Atmosphere": [
+              {
+                "Casual": true
+              },
+              {
+                "Cozy": true
+              },
+              {
+                "Quiet": true
+              },
+              {
+                "Romantic": true
+              },
+              {
+                "Trendy": true
+              }
+            ],
+            "Crowd": [
+              {
+                "Groups": true
+              },
+              {
+                "Tourists": true
+              }
+            ],
+            "Planning": [
+              {
+                "Brunch reservations recommended": true
+              },
+              {
+                "Lunch reservations recommended": true
+              },
+              {
+                "Dinner reservations recommended": true
+              },
+              {
+                "Accepts reservations": true
+              }
+            ],
+            "Payments": [
+              {
+                "Credit cards": true
+              },
+              {
+                "Debit cards": true
+              },
+              {
+                "NFC mobile payments": true
+              }
+            ],
+            "Children": [
+              {
+                "Good for kids": true
+              },
+              {
+                "Good for kids birthday": true
+              },
+              {
+                "High chairs": true
+              },
+              {
+                "Kids' menu": true
+              }
+            ],
+            "Parking": [
+              {
+                "Free parking lot": true
+              },
+              {
+                "Free street parking": true
+              },
+              {
+                "Usually plenty of parking": true
+              }
+            ]
+          },
+          "gasPrices": [],
+          "url": "https://www.google.com/maps/search/?api=1&query=Gardenia%20by%20Munchkins&query_place_id=ChIJ32AHTsULThARW8E2sJ0FZ20",
+          "searchPageUrl": "https://www.google.com/maps/search/restuarant/@9.089783407088888,7.497887920620985,16z?hl=en",
+          "searchString": "restuarant",
+          "language": "en",
+          "rank": 4,
+          "isAdvertisement": false,
+          "imageUrl": "https://lh3.googleusercontent.com/p/AF1QipMpDOWMlzyx59tQyv1uLZwQFUhuogxgdXLmLmkz=w408-h510-k-no",
+          "kgmid": "/g/11tjx9lly8"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "Vanilla Restaurant & Lounge",
+          "price": "₦30,000–35,000",
+          "categoryName": "Restaurant",
+          "address": "11 Usuma Cl, Maitama, Abuja 904101, Federal Capital Territory, Nigeria",
+          "neighborhood": "Maitama",
+          "street": "11 Usuma Cl",
+          "city": "Abuja",
+          "postalCode": null,
+          "state": "Federal Capital Territory",
+          "countryCode": "NG",
+          "website": "http://www.vanilla-abuja.com/",
+          "phone": "+234 810 454 5070",
+          "phoneUnformatted": "+2348104545070",
+          "claimThisBusiness": false,
+          "location": {
+            "lat": 9.082596,
+            "lng": 7.5016922
+          },
+          "totalScore": 4.2,
+          "permanentlyClosed": false,
+          "temporarilyClosed": false,
+          "placeId": "ChIJb72roUcKThAR-CKE-Tcla0g",
+          "categories": [
+            "Restaurant",
+            "Breakfast restaurant",
+            "Lounge"
+          ],
+          "fid": "0x104e0a47a1abbd6f:0x486b2537f98422f8",
+          "cid": "5218305515578467064",
+          "reviewsCount": 1725,
+          "imagesCount": 1630,
+          "imageCategories": [],
+          "scrapedAt": "2026-01-11T21:39:34.107Z",
+          "googleFoodUrl": null,
+          "hotelAds": [],
+          "openingHours": [
+            {
+              "day": "Monday",
+              "hours": "4 PM to 12 AM"
+            },
+            {
+              "day": "Tuesday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Wednesday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Thursday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Friday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Saturday",
+              "hours": "10 AM to 12 AM"
+            },
+            {
+              "day": "Sunday",
+              "hours": "10 AM to 12 AM"
+            }
+          ],
+          "peopleAlsoSearch": [],
+          "placesTags": [],
+          "reviewsTags": [],
+          "additionalInfo": {
+            "Service options": [
+              {
+                "Delivery": true
+              },
+              {
+                "Takeout": true
+              },
+              {
+                "Dine-in": true
+              }
+            ],
+            "Highlights": [
+              {
+                "Great beer selection": true
+              },
+              {
+                "Great cocktails": true
+              },
+              {
+                "Great coffee": true
+              },
+              {
+                "Great dessert": true
+              },
+              {
+                "Great tea selection": true
+              },
+              {
+                "Great wine list": true
+              },
+              {
+                "Sports": true
+              }
+            ],
+            "Popular for": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Solo dining": true
+              }
+            ],
+            "Accessibility": [
+              {
+                "Wheelchair accessible restroom": true
+              },
+              {
+                "Wheelchair accessible seating": true
+              },
+              {
+                "Wheelchair accessible entrance": false
+              }
+            ],
+            "Offerings": [
+              {
+                "Alcohol": true
+              },
+              {
+                "All you can eat": true
+              },
+              {
+                "Beer": true
+              },
+              {
+                "Cocktails": true
+              },
+              {
+                "Coffee": true
+              },
+              {
+                "Halal food": true
+              },
+              {
+                "Happy hour drinks": true
+              },
+              {
+                "Happy hour food": true
+              },
+              {
+                "Hard liquor": true
+              },
+              {
+                "Late-night food": true
+              },
+              {
+                "Organic dishes": true
+              },
+              {
+                "Private dining room": true
+              },
+              {
+                "Quick bite": true
+              },
+              {
+                "Small plates": true
+              },
+              {
+                "Vegetarian options": true
+              },
+              {
+                "Wine": true
+              }
+            ],
+            "Dining options": [
+              {
+                "Breakfast": true
+              },
+              {
+                "Brunch": true
+              },
+              {
+                "Lunch": true
+              },
+              {
+                "Dinner": true
+              },
+              {
+                "Catering": true
+              },
+              {
+                "Counter service": true
+              },
+              {
+                "Dessert": true
+              },
+              {
+                "Seating": true
+              },
+              {
+                "Table service": true
+              }
+            ],
+            "Amenities": [
+              {
+                "Bar onsite": true
+              },
+              {
+                "Restroom": true
+              },
+              {
+                "Wi-Fi": true
+              },
+              {
+                "Free Wi-Fi": true
+              }
+            ],
+            "Atmosphere": [
+              {
+                "Casual": true
+              },
+              {
+                "Cozy": true
+              },
+              {
+                "Quiet": true
+              },
+              {
+                "Romantic": true
+              },
+              {
+                "Trendy": true
+              },
+              {
+                "Upscale": true
+              }
+            ],
+            "Crowd": [
+              {
+                "College students": true
+              },
+              {
+                "Family-friendly": true
+              },
+              {
+                "Groups": true
+              },
+              {
+                "Tourists": true
+              }
+            ],
+            "Planning": [
+              {
+                "Brunch reservations recommended": true
+              },
+              {
+                "Lunch reservations recommended": true
+              },
+              {
+                "Reservations required": true
+              },
+              {
+                "Dinner reservations recommended": true
+              },
+              {
+                "Accepts reservations": true
+              }
+            ],
+            "Payments": [
+              {
+                "Credit cards": true
+              },
+              {
+                "Debit cards": true
+              },
+              {
+                "NFC mobile payments": true
+              }
+            ],
+            "Children": [
+              {
+                "Good for kids": true
+              },
+              {
+                "High chairs": true
+              },
+              {
+                "Kids' menu": true
+              }
+            ],
+            "Parking": [
+              {
+                "Free parking lot": true
+              },
+              {
+                "Free street parking": true
+              },
+              {
+                "Usually plenty of parking": true
+              }
+            ]
+          },
+          "gasPrices": [],
+          "url": "https://www.google.com/maps/search/?api=1&query=Vanilla%20Restaurant%20%26%20Lounge&query_place_id=ChIJb72roUcKThAR-CKE-Tcla0g",
+          "searchPageUrl": "https://www.google.com/maps/search/restuarant/@9.089783407088888,7.497887920620985,16z?hl=en",
+          "searchString": "restuarant",
+          "language": "en",
+          "rank": 5,
+          "isAdvertisement": false,
+          "imageUrl": "https://lh3.googleusercontent.com/p/AF1QipPWUFnNDiuvY42C4XaTiuaJ-ruJUu5yOY1sD6im=w408-h272-k-no",
+          "kgmid": "/g/11b5plhdhw"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Split Out2": [
+      {
+        "json": {
+          "website": "https://gardeniaresto.com/",
+          "title": "Gardenia by Munchkins",
+          "phoneUnformatted": "+2348088444444",
+          "state": "Federal Capital Territory"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "website": "http://www.vanilla-abuja.com/",
+          "title": "Vanilla Restaurant & Lounge",
+          "phoneUnformatted": "+2348104545070",
+          "state": "Federal Capital Territory"
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      }
+    ]
+  },
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor and get dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor and get dataset": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "60c45413-b260-46e4-9221-049c587e4321",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f8da5e88d100732e2c2e2705bb6c68aeac8d30adb7d6c4a030e8047e305aef22"
+  },
+  "id": "i4c9aOhsQNXKTRA0FOkHm",
+  "tags": []
+}
